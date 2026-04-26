@@ -225,7 +225,7 @@ export default function NewProjectModal({ onClose, onCreated }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
               width: '28px', height: '28px', borderRadius: '6px',
-              background: 'linear-gradient(135deg, #7b2fff, #9999ff)',
+              background: 'linear-gradient(135deg, #0077ff, #60b0ff)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
@@ -382,7 +382,7 @@ export default function NewProjectModal({ onClose, onCreated }) {
               onChange={setVideoFile} {...videoHandlers}>
               {videoFile ? (
                 <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
-                  <div style={{ color: '#9999ff', flexShrink: 0 }}><VideoIcon /></div>
+                  <div style={{ color: '#60b0ff', flexShrink: 0 }}><VideoIcon /></div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '13px', color: '#e8e8f0', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {videoFile.name}
@@ -406,13 +406,13 @@ export default function NewProjectModal({ onClose, onCreated }) {
               <div style={{ marginTop: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '12px', color: '#8888aa' }}>Caricamento video...</span>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#9999ff' }}>{videoProgress}%</span>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#60b0ff' }}>{videoProgress}%</span>
                 </div>
                 <div style={{ height: '5px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
                     width: `${videoProgress}%`,
-                    background: 'linear-gradient(90deg, #7b2fff 0%, #9999ff 100%)',
+                    background: 'linear-gradient(90deg, #0077ff 0%, #60b0ff 100%)',
                     borderRadius: '3px',
                     transition: 'width 0.3s ease',
                     boxShadow: '0 0 10px rgba(153,153,255,0.6)',
@@ -487,7 +487,7 @@ export default function NewProjectModal({ onClose, onCreated }) {
               borderRadius: '9px',
               border: 'none',
               background: canSave
-                ? 'linear-gradient(135deg, #7b2fff 0%, #9999ff 100%)'
+                ? 'linear-gradient(135deg, #0077ff 0%, #60b0ff 100%)'
                 : 'rgba(255,255,255,0.06)',
               color: canSave ? '#fff' : '#44445a',
               fontSize: '13px',
@@ -499,7 +499,7 @@ export default function NewProjectModal({ onClose, onCreated }) {
               justifyContent: 'center',
               gap: '8px',
               transition: 'opacity 0.2s',
-              boxShadow: canSave ? '0 4px 20px rgba(123,47,255,0.35)' : 'none',
+              boxShadow: canSave ? '0 4px 20px rgba(0,119,255,0.35)' : 'none',
             }}
           >
             {saving && !isUploading && (

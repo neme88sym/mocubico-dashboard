@@ -182,7 +182,7 @@ export default function App() {
                 {hasActiveFilter && (
                   <button
                     onClick={() => { setSoftwareFilter(ALL_FILTER); setStatusFilter(ALL_FILTER); setSearch('') }}
-                    style={{ fontSize: '12px', color: '#9999ff', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', textDecoration: 'underline', fontFamily: 'inherit' }}
+                    style={{ fontSize: '12px', color: '#60b0ff', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', textDecoration: 'underline', fontFamily: 'inherit' }}
                   >
                     Rimuovi filtri
                   </button>

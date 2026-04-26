@@ -73,9 +73,9 @@ function FilterPill({ label, active, onClick, color }) {
       style={{
         padding: '4px 11px', borderRadius: '20px', fontSize: '11px', fontWeight: 500,
         cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-        border:           active ? `1px solid ${color || '#7b2fff'}` : '1px solid rgba(255,255,255,0.07)',
-        backgroundColor:  active ? `${(color || '#7b2fff')}22` : 'rgba(19,19,31,0.8)',
-        color:            active ? (color || '#9999ff') : '#8888aa',
+        border:           active ? `1px solid ${color || '#0077ff'}` : '1px solid rgba(255,255,255,0.07)',
+        backgroundColor:  active ? `${(color || '#0077ff')}22` : 'rgba(19,19,31,0.8)',
+        color:            active ? (color || '#60b0ff') : '#8888aa',
         transition: 'all 0.15s',
         display: 'flex', alignItems: 'center', gap: '4px',
         flexShrink: 0,

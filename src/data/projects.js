@@ -9,7 +9,7 @@ export const SOFTWARE = {
 
 // Singola fonte di verità per colori e abbreviazioni — usata da card, filtri e modal
 export const SOFTWARE_CONFIG = {
-  'After Effects': { short: 'Ae',  color: '#9999ff' },
+  'After Effects': { short: 'Ae',  color: '#60b0ff' },
   'Cinema 4D':     { short: 'C4D', color: '#ff6b35' },
   'Premiere Pro':  { short: 'Pr',  color: '#ea77ff' },
   'Octane Render': { short: 'Oct', color: '#ffd166' },

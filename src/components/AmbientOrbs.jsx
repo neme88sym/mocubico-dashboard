@@ -7,14 +7,14 @@ export default function AmbientOrbs({ softwareFilter = null, accentColor = null 
   // Se viene passato accentColor (pagina dettaglio), usiamo quello per l'orb centrale
   const centerColor = accentColor
     ? `${accentColor}18`
-    : 'rgba(99,102,241,0.09)'
+    : 'rgba(0,119,255,0.09)'
 
   return (
     <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
       {/* Viola/viola — top-left */}
       <div style={{
         position: 'absolute', width: '750px', height: '750px', borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(123,47,255,0.18) 0%, rgba(99,47,200,0.08) 45%, transparent 68%)',
+        background: 'radial-gradient(circle, rgba(0,119,255,0.18) 0%, rgba(0,90,200,0.08) 45%, transparent 68%)',
         top: '-220px', left: '-160px',
         transition: 'opacity 1.2s cubic-bezier(0.4,0,0.2,1), transform 1.2s cubic-bezier(0.4,0,0.2,1)',
         opacity: isC4D ? 0.2 : 1,

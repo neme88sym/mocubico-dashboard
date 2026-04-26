@@ -60,7 +60,7 @@ export default function ProjectCard({ project, onDelete, onStatusChange }) {
 
   const swList    = Array.isArray(project.software) ? project.software : [project.software].filter(Boolean)
   const primarySw = swList[0]
-  const swCfg     = SOFTWARE_CONFIG[primarySw] || { color: '#7b2fff' }
+  const swCfg     = SOFTWARE_CONFIG[primarySw] || { color: '#0077ff' }
   const stCfg     = STATUS_CONFIG[currentStatus] || STATUS_CONFIG[STATUS.BRIEF]
 
   useEffect(() => {

@@ -192,7 +192,7 @@ export default function ProjectDetail() {
       {/* Loading */}
       {loading && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100dvh - 56px)', color: '#44445a' }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7b2fff" strokeWidth="2"
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0077ff" strokeWidth="2"
             style={{ animation: 'spin 0.9s linear infinite' }}>
             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
           </svg>
@@ -203,7 +203,7 @@ export default function ProjectDetail() {
       {error && (
         <div style={{ padding: '48px 24px', textAlign: 'center', color: '#f87171', fontSize: '14px' }}>
           <p style={{ margin: '0 0 12px' }}>Progetto non trovato o errore di rete.</p>
-          <Link to="/" style={{ color: '#9999ff', fontSize: '13px' }}>← Torna alla dashboard</Link>
+          <Link to="/" style={{ color: '#60b0ff', fontSize: '13px' }}>← Torna alla dashboard</Link>
         </div>
       )}
 
@@ -241,11 +241,11 @@ export default function ProjectDetail() {
                 width: '100%', height: '100%',
                 background: accentColor
                   ? `radial-gradient(ellipse at 50% 50%, ${accentColor}20 0%, transparent 70%)`
-                  : 'radial-gradient(ellipse at 50% 50%, rgba(123,47,255,0.12) 0%, transparent 70%)',
+                  : 'radial-gradient(ellipse at 50% 50%, rgba(0,119,255,0.12) 0%, transparent 70%)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 <svg width="56" height="56" viewBox="0 0 24 24" fill="none"
-                  stroke={accentColor || '#7b2fff'} strokeWidth="0.8" style={{ opacity: 0.3 }}>
+                  stroke={accentColor || '#0077ff'} strokeWidth="0.8" style={{ opacity: 0.3 }}>
                   <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
                 </svg>
               </div>

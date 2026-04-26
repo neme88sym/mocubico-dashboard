@@ -14,7 +14,7 @@ export default function Header({ projectCount, onNew }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
             width: '36px', height: '36px',
-            background: 'linear-gradient(135deg, #7b2fff 0%, #9999ff 100%)',
+            background: 'linear-gradient(135deg, #0077ff 0%, #60b0ff 100%)',
             borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontWeight: 800, fontSize: '14px', color: '#fff', letterSpacing: '-0.5px',
           }}>
@@ -44,11 +44,11 @@ export default function Header({ projectCount, onNew }) {
             style={{
               display: 'flex', alignItems: 'center', gap: '7px',
               height: '36px', padding: '0 14px',
-              background: 'linear-gradient(135deg, #7b2fff 0%, #9999ff 100%)',
+              background: 'linear-gradient(135deg, #0077ff 0%, #60b0ff 100%)',
               border: 'none', borderRadius: '9px',
               color: '#fff', fontSize: '13px', fontWeight: 700,
               cursor: 'pointer', fontFamily: 'inherit',
-              boxShadow: '0 4px 16px rgba(123,47,255,0.35)',
+              boxShadow: '0 4px 16px rgba(0,119,255,0.35)',
               transition: 'opacity 0.15s, transform 0.15s',
             }}
             onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-1px)' }}
