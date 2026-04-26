@@ -1,0 +1,8 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>
+  <rect width='512' height='512' rx='80' fill='#0a0a0f'/>
+  <polygon points='256,60 420,150 420,362 256,452 92,362 92,150' fill='none' stroke='#7b2fff' stroke-width='14'/>
+  <polygon points='256,60 420,150 256,240 92,150' fill='#13131f' stroke='#9999ff' stroke-width='8'/>
+  <polygon points='92,150 256,240 256,452 92,362' fill='#0f0f1a' stroke='#7b2fff' stroke-width='8'/>
+  <polygon points='420,150 256,240 256,452 420,362' fill='#111120' stroke='#ff6b35' stroke-width='8'/>
+  <text x='256' y='290' text-anchor='middle' font-family='system-ui,sans-serif' font-weight='800' font-size='88' fill='#e8e8f0' letter-spacing='-4'>MC</text>
+</svg>
