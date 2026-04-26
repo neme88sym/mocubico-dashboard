@@ -189,4 +189,5 @@ body {
 
 @media (max-width: 500px) {
   .header-count { display: none; }
+  .header-email { display: none; }
 }

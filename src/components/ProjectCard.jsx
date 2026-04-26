@@ -49,7 +49,7 @@ function SoftwareBadges({ software }) {
   )
 }
 
-export default function ProjectCard({ project, onDelete, onStatusChange }) {
+export default function ProjectCard({ project, isAdmin = false, onDelete, onStatusChange }) {
   const navigate = useNavigate()
   const [hovered,       setHovered]      = useState(false)
   const [currentStatus, setStatus]       = useState(project.status)
@@ -226,21 +226,88 @@ export default function ProjectCard({ project, onDelete, onStatusChange }) {
         {/* Footer: stato + data + elimina */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: 'auto', position: 'relative' }}>
 
-          {/* Status badge — cliccabile per dropdown */}
-          <div ref={dropdownRef} style={{ position: 'relative' }}>
-            <button
-              onClick={(e) => { e.stopPropagation(); setStatusOpen(o => !o) }}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '5px',
-                backgroundColor: stCfg.bg,
-                border: `1px solid ${stCfg.color}44`,
-                borderRadius: '20px', padding: '3px 8px 3px 10px',
-                fontSize: '11px', fontWeight: 600, color: stCfg.color,
-                cursor: 'pointer',
-                backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
-                transition: 'opacity 0.15s',
-              }}
-            >
+          {/* Status: dropdown se admin, badge read-only se client */}
+          {isAdmin ? (
+            <div ref={dropdownRef} style={{ position: 'relative' }}>
+              <button
+                onClick={(e) => { e.stopPropagation(); setStatusOpen(o => !o) }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '5px',
+                  backgroundColor: stCfg.bg,
+                  border: `1px solid ${stCfg.color}44`,
+                  borderRadius: '20px', padding: '3px 8px 3px 10px',
+                  fontSize: '11px', fontWeight: 600, color: stCfg.color,
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+                  transition: 'opacity 0.15s',
+                }}
+              >
+                {stCfg.dot && (
+                  <span style={{
+                    width: '5px', height: '5px', borderRadius: '50%',
+                    backgroundColor: stCfg.color,
+                    animation: 'pulse-glow 1.4s ease-in-out infinite',
+                    boxShadow: `0 0 6px ${stCfg.color}`,
+                  }} />
+                )}
+                {currentStatus}
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {/* Dropdown stati */}
+              {statusOpen && (
+                <div style={{
+                  position: 'absolute', bottom: 'calc(100% + 6px)', left: 0,
+                  backgroundColor: 'rgba(10,8,20,0.95)',
+                  backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '10px',
+                  padding: '6px',
+                  minWidth: '150px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+                  zIndex: 20,
+                  animation: 'slide-up 0.15s ease-out both',
+                }}>
+                  {STATUS_LIST.map((s) => {
+                    const cfg = STATUS_CONFIG[s]
+                    return (
+                      <button
+                        key={s}
+                        onClick={(e) => { e.stopPropagation(); handleStatusSelect(s) }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '8px',
+                          width: '100%', padding: '7px 10px',
+                          borderRadius: '6px', border: 'none',
+                          backgroundColor: s === currentStatus ? `${cfg.color}18` : 'transparent',
+                          color: s === currentStatus ? cfg.color : '#8888aa',
+                          fontSize: '12px', fontWeight: s === currentStatus ? 600 : 400,
+                          cursor: 'pointer', textAlign: 'left',
+                          transition: 'background-color 0.1s',
+                          fontFamily: 'inherit',
+                        }}
+                        onMouseEnter={(e) => { if (s !== currentStatus) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)' }}
+                        onMouseLeave={(e) => { if (s !== currentStatus) e.currentTarget.style.backgroundColor = 'transparent' }}
+                      >
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: cfg.color, flexShrink: 0 }} />
+                        {s}
+                        {s === currentStatus && <span style={{ marginLeft: 'auto', fontSize: '10px' }}>✓</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Client: status read-only */
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '5px',
+              backgroundColor: stCfg.bg,
+              border: `1px solid ${stCfg.color}33`,
+              borderRadius: '20px', padding: '3px 10px',
+              fontSize: '11px', fontWeight: 600, color: stCfg.color,
+            }}>
               {stCfg.dot && (
                 <span style={{
                   width: '5px', height: '5px', borderRadius: '50%',
@@ -250,92 +317,48 @@ export default function ProjectCard({ project, onDelete, onStatusChange }) {
                 }} />
               )}
               {currentStatus}
-              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
-
-            {/* Dropdown stati */}
-            {statusOpen && (
-              <div style={{
-                position: 'absolute', bottom: 'calc(100% + 6px)', left: 0,
-                backgroundColor: 'rgba(10,8,20,0.95)',
-                backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '10px',
-                padding: '6px',
-                minWidth: '150px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-                zIndex: 20,
-                animation: 'slide-up 0.15s ease-out both',
-              }}>
-                {STATUS_LIST.map((s) => {
-                  const cfg = STATUS_CONFIG[s]
-                  return (
-                    <button
-                      key={s}
-                      onClick={(e) => { e.stopPropagation(); handleStatusSelect(s) }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        width: '100%', padding: '7px 10px',
-                        borderRadius: '6px', border: 'none',
-                        backgroundColor: s === currentStatus ? `${cfg.color}18` : 'transparent',
-                        color: s === currentStatus ? cfg.color : '#8888aa',
-                        fontSize: '12px', fontWeight: s === currentStatus ? 600 : 400,
-                        cursor: 'pointer', textAlign: 'left',
-                        transition: 'background-color 0.1s',
-                        fontFamily: 'inherit',
-                      }}
-                      onMouseEnter={(e) => { if (s !== currentStatus) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)' }}
-                      onMouseLeave={(e) => { if (s !== currentStatus) e.currentTarget.style.backgroundColor = 'transparent' }}
-                    >
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: cfg.color, flexShrink: 0 }} />
-                      {s}
-                      {s === currentStatus && <span style={{ marginLeft: 'auto', fontSize: '10px' }}>✓</span>}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+            </span>
+          )}
 
           {/* Data */}
           <span style={{ fontSize: '11px', color: '#44445a', marginLeft: 'auto' }}>
             {formatDate(project.updatedAt)}
           </span>
 
-          {/* Bottone elimina — visibile on hover */}
-          <button
-            onClick={(e) => { e.stopPropagation(); handleDeleteClick() }}
-            title={deletePhase === 'confirm' ? 'Clicca di nuovo per confermare' : 'Elimina progetto'}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '4px',
-              padding: deletePhase === 'confirm' ? '3px 8px' : '3px 6px',
-              borderRadius: '6px',
-              border: `1px solid ${deletePhase === 'confirm' ? 'rgba(255,68,85,0.5)' : 'rgba(255,255,255,0.06)'}`,
-              backgroundColor: deletePhase === 'confirm' ? 'rgba(255,68,85,0.15)' : 'rgba(255,255,255,0.03)',
-              color: deletePhase === 'confirm' ? '#ff4455' : '#44445a',
-              cursor: deletePhase === 'loading' ? 'wait' : 'pointer',
-              fontSize: '11px', fontWeight: 600,
-              opacity: hovered || deletePhase !== 'idle' ? 1 : 0,
-              transition: 'opacity 0.2s, background-color 0.15s, border-color 0.15s, color 0.15s',
-              flexShrink: 0,
-            }}
-          >
-            {deletePhase === 'loading' ? (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                style={{ animation: 'spin 0.8s linear infinite' }}>
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
-              </svg>
-            ) : deletePhase === 'confirm' ? (
-              'Conferma?'
-            ) : (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                <path d="M10 11v6M14 11v6M9 6V4h6v2" />
-              </svg>
-            )}
-          </button>
+          {/* Bottone elimina — solo admin, visibile on hover */}
+          {isAdmin && (
+            <button
+              onClick={(e) => { e.stopPropagation(); handleDeleteClick() }}
+              title={deletePhase === 'confirm' ? 'Clicca di nuovo per confermare' : 'Elimina progetto'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px',
+                padding: deletePhase === 'confirm' ? '3px 8px' : '3px 6px',
+                borderRadius: '6px',
+                border: `1px solid ${deletePhase === 'confirm' ? 'rgba(255,68,85,0.5)' : 'rgba(255,255,255,0.06)'}`,
+                backgroundColor: deletePhase === 'confirm' ? 'rgba(255,68,85,0.15)' : 'rgba(255,255,255,0.03)',
+                color: deletePhase === 'confirm' ? '#ff4455' : '#44445a',
+                cursor: deletePhase === 'loading' ? 'wait' : 'pointer',
+                fontSize: '11px', fontWeight: 600,
+                opacity: hovered || deletePhase !== 'idle' ? 1 : 0,
+                transition: 'opacity 0.2s, background-color 0.15s, border-color 0.15s, color 0.15s',
+                flexShrink: 0,
+              }}
+            >
+              {deletePhase === 'loading' ? (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  style={{ animation: 'spin 0.8s linear infinite' }}>
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
+                </svg>
+              ) : deletePhase === 'confirm' ? (
+                'Conferma?'
+              ) : (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6M14 11v6M9 6V4h6v2" />
+                </svg>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Tags */}

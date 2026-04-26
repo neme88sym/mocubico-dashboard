@@ -6,7 +6,8 @@ import FilterBar from './components/FilterBar'
 import ProjectCard from './components/ProjectCard'
 import AmbientOrbs from './components/AmbientOrbs'
 import NewProjectModal from './components/NewProjectModal'
-import { ALL_FILTER, STATUS, SOFTWARE_CONFIG } from './data/projects'
+import { useAuth } from './lib/AuthContext'
+import { ALL_FILTER, STATUS } from './data/projects'
 import { fetchProjects } from './lib/projectsApi'
 
 const STATUS_ORDER = {
@@ -83,6 +84,8 @@ function StatsBar({ projects: list }) {
 
 /* ── Main app ─────────────────────────────────────────────── */
 export default function App() {
+  const { isAdmin } = useAuth()
+
   const [softwareFilter, setSoftwareFilter] = useState(ALL_FILTER)
   const [statusFilter,   setStatusFilter]   = useState(ALL_FILTER)
   const [search,         setSearch]         = useState('')
@@ -134,7 +137,10 @@ export default function App() {
     <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
       <AmbientOrbs softwareFilter={softwareFilter} />
 
-      <Header projectCount={loading ? '—' : allProjects.length} onNew={() => setShowModal(true)} />
+      <Header
+        projectCount={loading ? '—' : allProjects.length}
+        onNew={() => setShowModal(true)}
+      />
       <FilterBar
         softwareFilter={softwareFilter} setSoftwareFilter={setSoftwareFilter}
         statusFilter={statusFilter}     setStatusFilter={setStatusFilter}
@@ -205,6 +211,7 @@ export default function App() {
                       >
                         <ProjectCard
                           project={project}
+                          isAdmin={isAdmin}
                           onDelete={handleDelete}
                           onStatusChange={handleStatusChange}
                         />
@@ -226,7 +233,8 @@ export default function App() {
         </div>
       </main>
 
-      {showModal && (
+      {/* Modal nuovo progetto — solo admin */}
+      {isAdmin && showModal && (
         <NewProjectModal
           onClose={() => setShowModal(false)}
           onCreated={handleProjectCreated}

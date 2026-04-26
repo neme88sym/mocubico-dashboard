@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { SOFTWARE_CONFIG, STATUS } from '../data/projects'
 import { createProject } from '../lib/projectsApi'
-import { uploadWithProgress, getPublicUrl, generateStoragePath } from '../lib/storageApi'
+import { uploadWithProgress, getPublicUrl, generateStoragePath, BUCKET_ASSETS, BUCKET_THUMBS } from '../lib/storageApi'
+import { captureVideoFrame } from '../lib/videoUtils'
 
 const STATUS_OPTIONS = Object.values(STATUS)
 
@@ -28,7 +29,7 @@ const LABEL = {
   marginBottom: '6px',
 }
 
-function UploadArea({ label, accept, file, preview, onChange, onClear, isDragging, onDragOver, onDrop, children }) {
+function UploadArea({ accept, file, isDragging, onChange, onDragOver, onDrop, children }) {
   const ref = useRef()
   return (
     <div>
@@ -37,11 +38,11 @@ function UploadArea({ label, accept, file, preview, onChange, onClear, isDraggin
         onDragOver={onDragOver}
         onDrop={onDrop}
         style={{
-          border: `2px dashed ${isDragging ? 'rgba(153,153,255,0.5)' : 'rgba(255,255,255,0.08)'}`,
+          border: `2px dashed ${isDragging ? 'rgba(0,119,255,0.5)' : 'rgba(255,255,255,0.08)'}`,
           borderRadius: '10px',
           cursor: file ? 'default' : 'pointer',
           overflow: 'hidden',
-          backgroundColor: isDragging ? 'rgba(153,153,255,0.05)' : 'rgba(255,255,255,0.015)',
+          backgroundColor: isDragging ? 'rgba(0,119,255,0.05)' : 'rgba(255,255,255,0.015)',
           transition: 'border-color 0.2s, background-color 0.2s',
           minHeight: '72px',
           display: 'flex',
@@ -72,17 +73,40 @@ function ImageIcon() {
   )
 }
 
+function SpinnerIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+      style={{ animation: 'spin 0.8s linear infinite', flexShrink: 0 }}>
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
+    </svg>
+  )
+}
+
 export default function NewProjectModal({ onClose, onCreated }) {
-  const [visible, setVisible]         = useState(false)
-  const [form, setForm]               = useState({ title: '', client: '', duration: '', status: STATUS.BRIEF, software: [] })
-  const [thumbFile, setThumbFile]     = useState(null)
-  const [thumbPreview, setThumbPrev]  = useState(null)
-  const [videoFile, setVideoFile]     = useState(null)
-  const [thumbDrag, setThumbDrag]     = useState(false)
-  const [videoDrag, setVideoDrag]     = useState(false)
-  const [videoProgress, setVidProg]   = useState(-1)   // -1 = inattivo
-  const [saving, setSaving]           = useState(false)
-  const [error, setError]             = useState(null)
+  const [visible, setVisible]       = useState(false)
+  const [form, setForm]             = useState({ title: '', client: '', duration: '', status: STATUS.BRIEF, software: [] })
+
+  // Thumbnail manuale (priorità su quella auto)
+  const [thumbFile,    setThumbFile]    = useState(null)
+  const [thumbPreview, setThumbPreview] = useState(null)
+
+  // Thumbnail auto-generata dal video
+  const [autoThumb,    setAutoThumb]    = useState(null)   // Blob
+  const [autoThumbUrl, setAutoThumbUrl] = useState(null)   // object URL per preview
+  const [capturing,    setCapturing]    = useState(false)
+  const captureIdRef = useRef(0)
+
+  const [videoFile,      setVideoFile]  = useState(null)
+  const [thumbDrag,      setThumbDrag]  = useState(false)
+  const [videoDrag,      setVideoDrag]  = useState(false)
+  const [videoProgress,  setVidProg]    = useState(-1)
+  const [saving,         setSaving]     = useState(false)
+  const [error,          setError]      = useState(null)
+
+  // Cleanup object URL on unmount
+  useEffect(() => {
+    return () => { if (autoThumbUrl) URL.revokeObjectURL(autoThumbUrl) }
+  }, [autoThumbUrl])
 
   // Entrance animation
   useEffect(() => {
@@ -114,8 +138,47 @@ export default function NewProjectModal({ onClose, onCreated }) {
     if (!file?.type.startsWith('image/')) return
     setThumbFile(file)
     const reader = new FileReader()
-    reader.onload = (e) => setThumbPrev(e.target.result)
+    reader.onload = (e) => setThumbPreview(e.target.result)
     reader.readAsDataURL(file)
+  }
+
+  function clearManualThumb() {
+    setThumbFile(null)
+    setThumbPreview(null)
+  }
+
+  function clearAutoThumb() {
+    if (autoThumbUrl) URL.revokeObjectURL(autoThumbUrl)
+    setAutoThumb(null)
+    setAutoThumbUrl(null)
+  }
+
+  async function handleVideoFile(file) {
+    if (!file) {
+      setVideoFile(null)
+      clearAutoThumb()
+      return
+    }
+    setVideoFile(file)
+
+    // Avvia cattura frame (id per gestire race condition)
+    const captureId = ++captureIdRef.current
+    setCapturing(true)
+
+    try {
+      const blob = await captureVideoFrame(file)
+      if (captureIdRef.current !== captureId) return  // cattura superata da una più recente
+
+      const url = URL.createObjectURL(blob)
+      if (autoThumbUrl) URL.revokeObjectURL(autoThumbUrl)
+      setAutoThumb(blob)
+      setAutoThumbUrl(url)
+    } catch (e) {
+      if (captureIdRef.current !== captureId) return
+      console.warn('Cattura thumbnail fallita:', e.message)
+    } finally {
+      if (captureIdRef.current === captureId) setCapturing(false)
+    }
   }
 
   function makeDropHandlers(setDrag, onFile) {
@@ -138,27 +201,32 @@ export default function NewProjectModal({ onClose, onCreated }) {
       let thumbnailUrl = null
       let videoUrl     = null
 
-      if (thumbFile) {
-        const path = generateStoragePath('thumbnails', thumbFile)
-        await uploadWithProgress(path, thumbFile, null)
-        thumbnailUrl = getPublicUrl(path)
+      // Thumbnail: manuale ha priorità sull'auto-generata
+      const thumbToUpload = thumbFile ?? autoThumb
+      if (thumbToUpload) {
+        const path = generateStoragePath(
+          thumbFile ?? { name: 'auto.webp' },
+          thumbFile ? undefined : 'webp',
+        )
+        await uploadWithProgress(BUCKET_THUMBS, path, thumbToUpload, null)
+        thumbnailUrl = getPublicUrl(BUCKET_THUMBS, path)
       }
 
       if (videoFile) {
         setVidProg(0)
-        const path = generateStoragePath('videos', videoFile)
-        await uploadWithProgress(path, videoFile, setVidProg)
-        videoUrl = getPublicUrl(path)
+        const path = generateStoragePath(videoFile)
+        await uploadWithProgress(BUCKET_ASSETS, path, videoFile, setVidProg)
+        videoUrl = getPublicUrl(BUCKET_ASSETS, path)
         setVidProg(-1)
       }
 
       const newProject = await createProject({
-        title:    form.title.trim(),
-        client:   form.client.trim(),
-        duration: form.duration.trim() || null,
-        status:   form.status,
-        software: form.software,
-        tags:     [],
+        title:     form.title.trim(),
+        client:    form.client.trim(),
+        duration:  form.duration.trim() || null,
+        status:    form.status,
+        software:  form.software,
+        tags:      [],
         thumbnail: thumbnailUrl,
         videoUrl,
       })
@@ -174,10 +242,14 @@ export default function NewProjectModal({ onClose, onCreated }) {
   }
 
   const thumbHandlers = makeDropHandlers(setThumbDrag, handleThumbFile)
-  const videoHandlers = makeDropHandlers(setVideoDrag, setVideoFile)
+  const videoHandlers = makeDropHandlers(setVideoDrag, handleVideoFile)
+
+  // Cosa mostrare nella sezione thumbnail
+  const effectivePreview = thumbPreview ?? autoThumbUrl
+  const hasAnyThumb = !!(thumbFile || autoThumb || capturing)
 
   const isUploading = videoProgress >= 0
-  const canSave     = !saving && form.title && form.client && form.software.length > 0
+  const canSave     = !saving && !capturing && form.title && form.client && form.software.length > 0
 
   return (
     <>
@@ -275,7 +347,7 @@ export default function NewProjectModal({ onClose, onCreated }) {
             />
           </div>
 
-          {/* Durata + Stato — 2 colonne */}
+          {/* Durata + Stato */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label style={LABEL}>Durata</label>
@@ -315,11 +387,8 @@ export default function NewProjectModal({ onClose, onCreated }) {
                       borderRadius: '8px',
                       padding: '9px 12px',
                       cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '9px',
-                      transition: 'all 0.15s',
-                      textAlign: 'left',
+                      display: 'flex', alignItems: 'center', gap: '9px',
+                      transition: 'all 0.15s', textAlign: 'left',
                     }}
                   >
                     <span style={{
@@ -333,53 +402,28 @@ export default function NewProjectModal({ onClose, onCreated }) {
                     <span style={{ fontSize: '12px', fontWeight: 500, color: active ? '#e8e8f0' : '#8888aa', lineHeight: 1.2 }}>
                       {value}
                     </span>
-                    {active && (
-                      <span style={{ marginLeft: 'auto', color, fontSize: '14px', lineHeight: 1 }}>✓</span>
-                    )}
+                    {active && <span style={{ marginLeft: 'auto', color, fontSize: '14px', lineHeight: 1 }}>✓</span>}
                   </button>
                 )
               })}
             </div>
           </div>
 
-          {/* Thumbnail upload */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <label style={LABEL}>Thumbnail</label>
-              {thumbFile && (
-                <button onClick={() => { setThumbFile(null); setThumbPrev(null) }}
-                  style={{ fontSize: '11px', color: '#ff4455', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}>
-                  Rimuovi
-                </button>
-              )}
-            </div>
-            <UploadArea accept="image/*" file={thumbFile} isDragging={thumbDrag}
-              onChange={handleThumbFile} {...thumbHandlers}>
-              {thumbPreview ? (
-                <img src={thumbPreview} alt="" style={{ width: '100%', height: '140px', objectFit: 'cover' }} />
-              ) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#44445a', width: '100%' }}>
-                  <div style={{ marginBottom: '6px' }}><ImageIcon /></div>
-                  <div style={{ fontSize: '12px' }}>Clicca o trascina un'immagine</div>
-                  <div style={{ fontSize: '11px', marginTop: '2px', color: '#2a2a45' }}>JPG, PNG, WebP</div>
-                </div>
-              )}
-            </UploadArea>
-          </div>
-
-          {/* Video upload + progress */}
+          {/* ── Video upload ───────────────────────────────── */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
               <label style={LABEL}>Video / Render</label>
               {videoFile && !isUploading && (
-                <button onClick={() => setVideoFile(null)}
-                  style={{ fontSize: '11px', color: '#ff4455', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}>
+                <button
+                  onClick={() => handleVideoFile(null)}
+                  style={{ fontSize: '11px', color: '#ff4455', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+                >
                   Rimuovi
                 </button>
               )}
             </div>
             <UploadArea accept="video/*" file={videoFile} isDragging={videoDrag}
-              onChange={setVideoFile} {...videoHandlers}>
+              onChange={handleVideoFile} {...videoHandlers}>
               {videoFile ? (
                 <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
                   <div style={{ color: '#60b0ff', flexShrink: 0 }}><VideoIcon /></div>
@@ -401,7 +445,7 @@ export default function NewProjectModal({ onClose, onCreated }) {
               )}
             </UploadArea>
 
-            {/* Progress bar — visibile solo durante l'upload */}
+            {/* Progress bar upload video */}
             {isUploading && (
               <div style={{ marginTop: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
@@ -410,16 +454,12 @@ export default function NewProjectModal({ onClose, onCreated }) {
                 </div>
                 <div style={{ height: '5px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{
-                    height: '100%',
-                    width: `${videoProgress}%`,
+                    height: '100%', width: `${videoProgress}%`,
                     background: 'linear-gradient(90deg, #0077ff 0%, #60b0ff 100%)',
-                    borderRadius: '3px',
-                    transition: 'width 0.3s ease',
-                    boxShadow: '0 0 10px rgba(153,153,255,0.6)',
-                    position: 'relative',
-                    overflow: 'hidden',
+                    borderRadius: '3px', transition: 'width 0.3s ease',
+                    boxShadow: '0 0 10px rgba(0,119,255,0.5)',
+                    position: 'relative', overflow: 'hidden',
                   }}>
-                    {/* Shimmer sul progress bar */}
                     <div style={{
                       position: 'absolute', inset: 0,
                       background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%)',
@@ -431,18 +471,111 @@ export default function NewProjectModal({ onClose, onCreated }) {
             )}
           </div>
 
-          {/* Messaggio di errore */}
+          {/* ── Thumbnail ─────────────────────────────────── */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              {/* Label + badge Auto */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label style={{ ...LABEL, marginBottom: 0 }}>Thumbnail</label>
+                {!thumbFile && autoThumb && !capturing && (
+                  <span style={{
+                    fontSize: '9px', fontWeight: 700, letterSpacing: '0.4px',
+                    color: '#60b0ff', backgroundColor: 'rgba(0,119,255,0.12)',
+                    border: '1px solid rgba(0,119,255,0.3)',
+                    borderRadius: '4px', padding: '2px 6px',
+                    textTransform: 'uppercase',
+                  }}>
+                    Auto
+                  </span>
+                )}
+                {capturing && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#8888aa' }}>
+                    <SpinnerIcon size={11} />
+                    Analisi video…
+                  </span>
+                )}
+              </div>
+
+              {/* Rimuovi */}
+              {!capturing && (thumbFile || autoThumb) && (
+                <button
+                  onClick={thumbFile ? clearManualThumb : clearAutoThumb}
+                  style={{ fontSize: '11px', color: '#ff4455', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  Rimuovi
+                </button>
+              )}
+            </div>
+
+            <UploadArea
+              accept="image/*"
+              file={thumbFile}          // solo manuale blocca il click; auto lascia cliccare per sostituire
+              isDragging={thumbDrag}
+              onChange={handleThumbFile}
+              {...thumbHandlers}
+            >
+              {capturing ? (
+                /* Spinner cattura frame */
+                <div style={{
+                  width: '100%', height: '100px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  gap: '10px', color: '#60b0ff',
+                }}>
+                  <SpinnerIcon size={20} />
+                  <span style={{ fontSize: '12px', color: '#8888aa' }}>Cattura frame in corso…</span>
+                </div>
+              ) : effectivePreview ? (
+                /* Anteprima thumbnail (manuale o auto) */
+                <div style={{ width: '100%', position: 'relative' }}>
+                  <img
+                    src={effectivePreview}
+                    alt="Anteprima thumbnail"
+                    style={{ width: '100%', height: '140px', objectFit: 'cover', display: 'block' }}
+                  />
+                  {/* Badge "auto-generata" + hint per sostituire */}
+                  {!thumbFile && autoThumb && (
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 50%)',
+                      display: 'flex', alignItems: 'flex-end', padding: '10px 12px',
+                      justifyContent: 'space-between',
+                    }}>
+                      <span style={{
+                        fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.7)',
+                        backgroundColor: 'rgba(0,119,255,0.4)',
+                        border: '1px solid rgba(0,119,255,0.5)',
+                        borderRadius: '4px', padding: '2px 7px',
+                        backdropFilter: 'blur(4px)',
+                      }}>
+                        Auto-generata dal video
+                      </span>
+                      <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>
+                        Clicca per sostituire
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Stato vuoto */
+                <div style={{ padding: '20px', textAlign: 'center', color: '#44445a', width: '100%' }}>
+                  <div style={{ marginBottom: '6px' }}><ImageIcon /></div>
+                  <div style={{ fontSize: '12px' }}>Clicca o trascina un'immagine</div>
+                  <div style={{ fontSize: '11px', marginTop: '2px', color: '#2a2a45' }}>
+                    {videoFile ? 'Generata in automatico — oppure carica la tua' : 'JPG, PNG, WebP'}
+                  </div>
+                </div>
+              )}
+            </UploadArea>
+          </div>
+
+          {/* Errore */}
           {error && (
             <div style={{
               backgroundColor: 'rgba(255,68,85,0.10)',
               border: '1px solid rgba(255,68,85,0.25)',
               borderRadius: '8px',
-              padding: '10px 14px',
-              fontSize: '13px',
-              color: '#ff8899',
-              display: 'flex',
-              gap: '8px',
-              alignItems: 'flex-start',
+              padding: '10px 14px', fontSize: '13px', color: '#ff8899',
+              display: 'flex', gap: '8px', alignItems: 'flex-start',
             }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: '1px' }}>
                 <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
@@ -456,24 +589,17 @@ export default function NewProjectModal({ onClose, onCreated }) {
         <div style={{
           padding: '16px 24px',
           borderTop: '1px solid rgba(255,255,255,0.06)',
-          display: 'flex',
-          gap: '10px',
-          flexShrink: 0,
+          display: 'flex', gap: '10px', flexShrink: 0,
         }}>
           <button
             onClick={() => !saving && onClose()}
             disabled={saving}
             style={{
-              flex: 1,
-              padding: '11px',
-              borderRadius: '9px',
+              flex: 1, padding: '11px', borderRadius: '9px',
               border: '1px solid rgba(255,255,255,0.08)',
               backgroundColor: 'rgba(255,255,255,0.04)',
-              color: '#8888aa',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: saving ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit',
+              color: '#8888aa', fontSize: '13px', fontWeight: 600,
+              cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
             }}
           >
             Annulla
@@ -482,33 +608,26 @@ export default function NewProjectModal({ onClose, onCreated }) {
             onClick={handleSave}
             disabled={!canSave}
             style={{
-              flex: 2,
-              padding: '11px',
-              borderRadius: '9px',
+              flex: 2, padding: '11px', borderRadius: '9px',
               border: 'none',
               background: canSave
                 ? 'linear-gradient(135deg, #0077ff 0%, #60b0ff 100%)'
                 : 'rgba(255,255,255,0.06)',
               color: canSave ? '#fff' : '#44445a',
-              fontSize: '13px',
-              fontWeight: 700,
+              fontSize: '13px', fontWeight: 700,
               cursor: canSave ? 'pointer' : 'not-allowed',
               fontFamily: 'inherit',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
               transition: 'opacity 0.2s',
               boxShadow: canSave ? '0 4px 20px rgba(0,119,255,0.35)' : 'none',
             }}
           >
-            {saving && !isUploading && (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                style={{ animation: 'spin 0.8s linear infinite' }}>
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
-              </svg>
-            )}
-            {saving ? (isUploading ? 'Upload...' : 'Salvataggio...') : 'Salva Progetto'}
+            {saving && !isUploading && <SpinnerIcon />}
+            {capturing
+              ? 'Analisi video in corso…'
+              : saving
+                ? (isUploading ? `Upload… ${videoProgress}%` : 'Salvataggio…')
+                : 'Salva Progetto'}
           </button>
         </div>
       </div>
